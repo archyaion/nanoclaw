@@ -3,6 +3,8 @@
 
 // discord
 
+import './feishu.js';
+
 // gmail
 
 // slack

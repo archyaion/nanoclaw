@@ -126,6 +126,15 @@ function createSchema(database: Database.Database): void {
     /* column already exists */
   }
 
+  // Feishu user name cache (persists across Pod restarts)
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS feishu_users (
+      open_id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
+
   // Add channel and is_group columns if they don't exist (migration for existing DBs)
   try {
     database.exec(`ALTER TABLE chats ADD COLUMN channel TEXT`);
@@ -687,6 +696,25 @@ export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
     };
   }
   return result;
+}
+
+// --- Feishu user cache ---
+
+export function getFeishuUsers(): Map<string, string> {
+  const rows = db
+    .prepare('SELECT open_id, name FROM feishu_users')
+    .all() as Array<{ open_id: string; name: string }>;
+  const result = new Map<string, string>();
+  for (const row of rows) {
+    result.set(row.open_id, row.name);
+  }
+  return result;
+}
+
+export function setFeishuUser(openId: string, name: string): void {
+  db.prepare(
+    `INSERT OR REPLACE INTO feishu_users (open_id, name, updated_at) VALUES (?, ?, ?)`,
+  ).run(openId, name, new Date().toISOString());
 }
 
 // --- JSON migration ---
